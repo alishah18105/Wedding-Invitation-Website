@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --gold-primary: #C5A059;
+    --gold-deep: #997A35;
+    --gold-light: #F3E5AB;
+    --burgundy-deep: #430D14;
+    --burgundy-accent: #701A24;
+    --ivory-cream: #FDFBF7;
+    --ivory-warm: #F7F3EB;
+  }
+
+  body {
+    background-color: #FDFBF7;
+    color: #2C241D;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.font-serif-luxury {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+.font-script {
+  font-family: 'Alex Brush', cursive;
+}
+
+.font-arabic {
+  font-family: 'Amiri', serif;
+}
+
+/* Subtle gold foil shimmer effect */
+@keyframes goldShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #B38728 0%, #FBF5B7 25%, #DAA520 50%, #AA771C 75%, #FBF5B7 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: goldShimmer 8s linear infinite;
+}
+
+.burgundy-gradient-text {
+  background: linear-gradient(135deg, #5B1020 0%, #87192F 50%, #3B0914 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-border-glow {
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.15), inset 0 0 15px rgba(212, 175, 55, 0.08);
+}
+
+.card-luxury {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(197, 160, 89, 0.28);
+  box-shadow: 0 15px 35px -5px rgba(67, 13, 20, 0.05), 0 5px 15px -2px rgba(197, 160, 89, 0.08);
+}
+
+/* Lantern pulsing glow */
+@keyframes lanternPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 12px rgba(243, 229, 171, 0.6)) drop-shadow(0 0 24px rgba(212, 175, 55, 0.3));
+    opacity: 0.95;
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(243, 229, 171, 0.85)) drop-shadow(0 0 35px rgba(212, 175, 55, 0.5));
+    opacity: 1;
+  }
+}
+
+.lantern-glow {
+  animation: lanternPulse 4s ease-in-out infinite;
+}
+
+/* Subtle float */
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.gentle-float {
+  animation: gentleFloat 6s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F7F3EB;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4AF37;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B38F3F;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-card,
+  .printable-card * {
+    visibility: visible;
+  }
+  .printable-card {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    max-width: 90vw;
+    max-height: 95vh;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

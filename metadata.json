@@ -1,0 +1,6 @@
+{
+  "name": "Neha & Irfan — Baraat Ceremony Invitation",
+  "description": "Royal Pakistani wedding invitation for the Baraat ceremony of Neha & Irfan. Featuring ceremony details, live countdown, banquet itinerary, and interactive RSVP.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
