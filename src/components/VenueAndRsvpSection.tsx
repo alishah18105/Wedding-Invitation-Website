@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation, Copy, Check, Heart, Send, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { GoldDivider } from './Ornaments';
+import { supabase, supabaseConfigurationError } from '../lib/supabase';
 
 interface Blessing {
   id: string;
   name: string;
   relation: string;
   message: string;
-  date: string;
+  createdAt: string;
 }
+
+const CARDS_PER_PAGE = 3;
+const MAX_GUEST_NAME_LENGTH = 100;
+const MAX_MESSAGE_LENGTH = 1000;
 
 export const VenueAndRsvpSection: React.FC = () => {
   const [copiedAddress, setCopiedAddress] = useState(false);
@@ -19,21 +24,73 @@ export const VenueAndRsvpSection: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [duaMessage, setDuaMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInProgress = useRef(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
 
   // Slider State (3 cards per page)
   const [pageIndex, setPageIndex] = useState(0);
-  const CARDS_PER_PAGE = 3;
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [blessings, setBlessings] = useState<Blessing[]>([]);
+  const [totalBlessings, setTotalBlessings] = useState(0);
+  const [isLoadingWishes, setIsLoadingWishes] = useState(true);
+  const [wishesError, setWishesError] = useState('');
 
-  // Guestbook Blessings (initially empty; only displays real user submissions)
-  const [blessings, setBlessings] = useState<Blessing[]>(() => {
-    try {
-      const saved = localStorage.getItem('neha_irfan_wedding_blessings');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  useEffect(() => {
+    let isCurrentRequest = true;
+
+    const loadBlessings = async () => {
+      setIsLoadingWishes(true);
+      setWishesError('');
+
+      if (!supabase) {
+        setWishesError(supabaseConfigurationError);
+        setIsLoadingWishes(false);
+        return;
+      }
+
+      const firstRecord = pageIndex * CARDS_PER_PAGE;
+      const lastRecord = firstRecord + CARDS_PER_PAGE - 1;
+      const { data, error, count } = await supabase
+        .from('wishes')
+        .select('id, guest_name, message, created_at', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(firstRecord, lastRecord);
+
+      if (!isCurrentRequest) return;
+
+      if (error) {
+        console.error('Unable to load wedding wishes from Supabase.', error);
+        setWishesError('We couldn’t load the wishes right now. Please try again later.');
+        setIsLoadingWishes(false);
+        return;
+      }
+
+      setBlessings(
+        data.map((wish) => ({
+          id: wish.id,
+          name: wish.guest_name,
+          relation: 'Family & Friends',
+          message: wish.message,
+          createdAt: wish.created_at,
+        }))
+      );
+      setTotalBlessings(count ?? data.length);
+      setIsLoadingWishes(false);
+    };
+
+    void loadBlessings().catch((error: unknown) => {
+      if (!isCurrentRequest) return;
+      console.error('Unable to load wedding wishes from Supabase.', error);
+      setWishesError('We couldn’t load the wishes right now. Please try again later.');
+      setIsLoadingWishes(false);
+    });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [pageIndex, refreshVersion]);
 
   const fullVenueAddress = 'Royal Sapphire Banquet, Near Munawar Chowrangi, Block 1 Gulistan-e-Johar, Karachi, Pakistan';
 
@@ -43,14 +100,46 @@ export const VenueAndRsvpSection: React.FC = () => {
     setTimeout(() => setCopiedAddress(false), 2500);
   };
 
-  const handleDuaSubmit = (e: React.FormEvent) => {
+  const handleDuaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !phone.trim() || !duaMessage.trim()) return;
+    if (submissionInProgress.current) return;
 
+    const guestName = fullName.trim();
+    const message = duaMessage.trim();
+
+    if (!guestName || !phone.trim() || !message) {
+      setSubmissionError('Please complete your name, phone number, and wish before submitting.');
+      return;
+    }
+
+    if (guestName.length > MAX_GUEST_NAME_LENGTH || message.length > MAX_MESSAGE_LENGTH) {
+      setSubmissionError(
+        `Please keep your name to ${MAX_GUEST_NAME_LENGTH} characters and your wish to ${MAX_MESSAGE_LENGTH} characters or fewer.`
+      );
+      return;
+    }
+
+    if (!supabase) {
+      setSubmissionError(supabaseConfigurationError);
+      return;
+    }
+
+    setSubmissionError('');
+    submissionInProgress.current = true;
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      // Celebratory golden confetti
+    try {
+      const { error } = await supabase.from('wishes').insert({
+        guest_name: guestName,
+        message,
+      });
+
+      if (error) {
+        console.error('Unable to save wedding wish to Supabase.', error);
+        setSubmissionError('Your wish could not be saved. Please try again.');
+        return;
+      }
+
       confetti({
         particleCount: 80,
         spread: 70,
@@ -58,35 +147,24 @@ export const VenueAndRsvpSection: React.FC = () => {
         colors: ['#D4AF37', '#F3E5AB', '#5B1020', '#C5A059', '#FAF5EB'],
       });
 
-      const newBlessing: Blessing = {
-        id: String(Date.now()),
-        name: fullName.trim(),
-        relation: 'Family & Friends',
-        message: duaMessage.trim(),
-        date: 'Just now',
-      };
-
-      const updated = [newBlessing, ...blessings];
-      setBlessings(updated);
-      setPageIndex(0); // Show newest submission first
-
-      try {
-        localStorage.setItem('neha_irfan_wedding_blessings', JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-
-      setIsSubmitting(false);
+      setFullName('');
+      setPhone('');
+      setDuaMessage('');
       setSubmitted(true);
-    }, 700);
+      setPageIndex(0);
+      setRefreshVersion((version) => version + 1);
+    } catch (error: unknown) {
+      console.error('Unable to save wedding wish to Supabase.', error);
+      setSubmissionError('Your wish could not be saved. Please try again.');
+    } finally {
+      submissionInProgress.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   // Pagination calculation
-  const totalPages = Math.ceil(blessings.length / CARDS_PER_PAGE);
-  const displayedBlessings = blessings.slice(
-    pageIndex * CARDS_PER_PAGE,
-    pageIndex * CARDS_PER_PAGE + CARDS_PER_PAGE
-  );
+  const totalPages = Math.ceil(totalBlessings / CARDS_PER_PAGE);
+  const displayedBlessings = blessings;
 
   const handlePrevPage = () => {
     setPageIndex((prev) => (prev > 0 ? prev - 1 : totalPages - 1));
@@ -191,7 +269,6 @@ export const VenueAndRsvpSection: React.FC = () => {
               <button
                 onClick={() => {
                   setSubmitted(false);
-                  setDuaMessage('');
                 }}
                 className="inline-block mt-4 text-xs font-serif-luxury uppercase tracking-widest text-[#8C6D23] hover:text-[#5B1020] underline underline-offset-4"
               >
@@ -210,9 +287,13 @@ export const VenueAndRsvpSection: React.FC = () => {
                     id="fullName"
                     type="text"
                     required
+                    maxLength={MAX_GUEST_NAME_LENGTH}
                     placeholder="e.g. Asad &amp; Hina Malik"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      setSubmissionError('');
+                    }}
                     className="w-full px-4 py-2.5 rounded-xl bg-[#FFFDF9] border border-[#D4AF37]/35 text-xs sm:text-sm text-[#430D14] placeholder:text-[#997A35]/40 focus:outline-none focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059]"
                   />
                 </div>
@@ -227,7 +308,10 @@ export const VenueAndRsvpSection: React.FC = () => {
                     required
                     placeholder="+92 300 1234567"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      setSubmissionError('');
+                    }}
                     className="w-full px-4 py-2.5 rounded-xl bg-[#FFFDF9] border border-[#D4AF37]/35 text-xs sm:text-sm text-[#430D14] placeholder:text-[#997A35]/40 focus:outline-none focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059]"
                   />
                 </div>
@@ -242,15 +326,24 @@ export const VenueAndRsvpSection: React.FC = () => {
                   id="duaMessage"
                   rows={4}
                   required
+                  maxLength={MAX_MESSAGE_LENGTH}
                   placeholder="Share a heartfelt prayer or sweet congratulatory wish for the couple..."
                   value={duaMessage}
-                  onChange={(e) => setDuaMessage(e.target.value)}
+                  onChange={(e) => {
+                    setDuaMessage(e.target.value);
+                    setSubmissionError('');
+                  }}
                   className="w-full px-4 py-2.5 rounded-xl bg-[#FFFDF9] border border-[#D4AF37]/35 text-xs sm:text-sm text-[#430D14] placeholder:text-[#997A35]/40 focus:outline-none focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059]"
                 />
               </div>
 
               {/* Submit Button */}
               <div className="pt-2 text-center">
+                {submissionError && (
+                  <p role="alert" className="mb-3 text-sm text-[#5B1020]">
+                    {submissionError}
+                  </p>
+                )}
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -275,7 +368,21 @@ export const VenueAndRsvpSection: React.FC = () => {
             </p>
           </div>
 
-          {blessings.length === 0 ? (
+          {isLoadingWishes ? (
+            <div role="status" className="bg-[#FFFDF9] rounded-2xl p-8 border border-[#D4AF37]/30 text-center max-w-md mx-auto shadow-sm">
+              <p className="font-serif-luxury text-base text-[#5B1020]">Loading wishes...</p>
+            </div>
+          ) : wishesError ? (
+            <div role="alert" className="bg-[#FFFDF9] rounded-2xl p-8 border border-[#D4AF37]/30 text-center max-w-md mx-auto shadow-sm">
+              <p className="font-serif-luxury text-base text-[#5B1020]">{wishesError}</p>
+              <button
+                onClick={() => setRefreshVersion((version) => version + 1)}
+                className="mt-3 text-xs font-serif-luxury uppercase tracking-widest text-[#8C6D23] hover:text-[#5B1020] underline underline-offset-4"
+              >
+                Try again
+              </button>
+            </div>
+          ) : totalBlessings === 0 ? (
             <div className="bg-[#FFFDF9] rounded-2xl p-8 border border-[#D4AF37]/30 text-center max-w-md mx-auto shadow-sm">
               <Sparkles className="w-8 h-8 text-[#C5A059] mx-auto mb-2 animate-pulse" />
               <p className="font-serif-luxury text-base text-[#5B1020]">
@@ -308,7 +415,7 @@ export const VenueAndRsvpSection: React.FC = () => {
                       </p>
                     </div>
                     <div className="mt-4 pt-2 border-t border-[#D4AF37]/15 flex items-center justify-between text-[10px] text-[#8C6D23]">
-                      <span>{b.date}</span>
+                      <span>{new Date(b.createdAt).toLocaleDateString()}</span>
                       <Heart className="w-3 h-3 text-[#C5A059] fill-[#C5A059]/20" />
                     </div>
                   </div>
@@ -316,7 +423,7 @@ export const VenueAndRsvpSection: React.FC = () => {
               </div>
 
               {/* Slider Controls (when there are more than 3 cards) */}
-              {blessings.length > CARDS_PER_PAGE && (
+              {totalBlessings > CARDS_PER_PAGE && (
                 <div className="flex items-center justify-center gap-4 pt-2">
                   <button
                     onClick={handlePrevPage}

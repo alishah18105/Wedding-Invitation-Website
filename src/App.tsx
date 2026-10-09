@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GoldParticles } from './components/GoldParticles';
 import { HeroSection } from './components/HeroSection';
 import { CeremonySection } from './components/CeremonySection';
@@ -11,7 +11,64 @@ import { Mail, Sparkles } from 'lucide-react';
 export default function App() {
   const [hasOpenedEnvelope, setHasOpenedEnvelope] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
-  const [isMusicOpen, setIsMusicOpen] = useState(true);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const autoplayAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    let interactionAttempted = false;
+    const removeInteractionListeners = () => {
+      window.removeEventListener('pointerdown', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+    const handleUserInteraction = () => {
+      if (interactionAttempted) return;
+      interactionAttempted = true;
+      removeInteractionListeners();
+      void playAudio();
+    };
+    const handlePlaying = () => removeInteractionListeners();
+    const playAudio = async () => {
+      try {
+        await audio.play();
+      } catch (error: unknown) {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') return;
+        console.error('Unable to play wedding music.', error);
+      }
+    };
+
+    audio.volume = 0.3;
+    window.addEventListener('pointerdown', handleUserInteraction);
+    window.addEventListener('keydown', handleUserInteraction);
+    audio.addEventListener('playing', handlePlaying);
+
+    if (!autoplayAttemptedRef.current) {
+      autoplayAttemptedRef.current = true;
+      void playAudio();
+    }
+
+    return () => {
+      removeInteractionListeners();
+      audio.removeEventListener('playing', handlePlaying);
+    };
+  }, []);
+
+  const toggleMusic = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      void audio.play().catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') return;
+        console.error('Unable to play wedding music.', error);
+      });
+    } else {
+      audio.pause();
+    }
+  };
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -27,10 +84,18 @@ export default function App() {
         <EnvelopeIntro
           onOpen={() => {
             setHasOpenedEnvelope(true);
-            setIsMusicOpen(true);
           }}
         />
       )}
+
+      <audio
+        ref={audioRef}
+        src="/sound.mp3"
+        preload="auto"
+        loop
+        onPlay={() => setIsMusicPlaying(true)}
+        onPause={() => setIsMusicPlaying(false)}
+      />
 
       {/* 2. Floating Golden Light & Dust Particles Canvas */}
       <GoldParticles />
@@ -56,13 +121,13 @@ export default function App() {
         </button>
       </aside>
 
-      {/* SECTION 1 — Animated Invitation Hero with Suno Wedding Music Player */}
+      {/* SECTION 1 — Animated Invitation Hero */}
       <HeroSection
         onScrollToCeremony={() => scrollToSection('ceremony')}
         onScrollToRsvp={() => scrollToSection('venue-rsvp')}
         onOpenCardModal={() => setIsCardModalOpen(true)}
-        isMusicOpen={isMusicOpen}
-        onToggleMusic={() => setIsMusicOpen((prev) => !prev)}
+        isMusicPlaying={isMusicPlaying}
+        onToggleMusic={toggleMusic}
       />
 
       {/* SECTION 2 — Baraat Ceremony & Itinerary + Live Countdown */}

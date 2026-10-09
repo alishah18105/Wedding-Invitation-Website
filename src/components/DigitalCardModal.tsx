@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Share2, Printer, Check, Sparkles, Download, Upload } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Share2, Printer, Check, Sparkles, Download } from 'lucide-react';
 import fallbackCardImg from '../assets/images/official_wedding_card_1791561155668.jpg';
 
 interface DigitalCardModalProps {
@@ -10,7 +10,6 @@ interface DigitalCardModalProps {
 export const DigitalCardModal: React.FC<DigitalCardModalProps> = ({ isOpen, onClose }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [cardSrc, setCardSrc] = useState<string>('/card.png');
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     // Check if custom user uploaded card exists in localStorage
@@ -64,25 +63,6 @@ export const DigitalCardModal: React.FC<DigitalCardModalProps> = ({ isOpen, onCl
     document.body.removeChild(link);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (result) {
-          setCardSrc(result);
-          try {
-            localStorage.setItem('user_custom_wedding_card', result);
-          } catch {
-            // ignore quota errors
-          }
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-[#2C241D]/80 backdrop-blur-md animate-in fade-in duration-300">
       {/* Click outside to close */}
@@ -98,23 +78,6 @@ export const DigitalCardModal: React.FC<DigitalCardModalProps> = ({ isOpen, onCl
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Optional upload / sync card input */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/*"
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1 text-[11px] font-serif-luxury text-[#F3E5AB]/90 hover:text-white px-2 py-0.5 rounded border border-[#D4AF37]/40 hover:border-[#F3E5AB] transition-colors"
-              title="Upload your card.png directly"
-            >
-              <Upload className="w-3 h-3" />
-              <span>Change Card</span>
-            </button>
-
             <button
               onClick={onClose}
               className="p-1 rounded-full text-[#FFF9E6] hover:bg-white/10 transition-colors ml-1"

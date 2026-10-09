@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Music, Calendar, MapPin, ChevronDown, Sparkles, Heart, ExternalLink, X, ChevronUp } from 'lucide-react';
+import React from 'react';
+import { Play, Pause, Calendar, MapPin, ChevronDown, Sparkles, Heart } from 'lucide-react';
 import desktopBg from '../assets/images/luxury_wedding_bg_1791545288117.jpg';
 import portraitBg from '../assets/images/luxury_wedding_portrait_1791545317807.jpg';
 
@@ -7,26 +7,17 @@ interface HeroSectionProps {
   onScrollToCeremony: () => void;
   onScrollToRsvp: () => void;
   onOpenCardModal: () => void;
-  isMusicOpen?: boolean;
-  onToggleMusic?: () => void;
+  isMusicPlaying: boolean;
+  onToggleMusic: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
   onScrollToCeremony,
   onScrollToRsvp,
   onOpenCardModal,
-  isMusicOpen = true,
+  isMusicPlaying,
   onToggleMusic,
 }) => {
-  const [localMusicOpen, setLocalMusicOpen] = useState(true);
-
-  const showMusic = onToggleMusic ? isMusicOpen : localMusicOpen;
-  const toggleMusic = onToggleMusic || (() => setLocalMusicOpen((prev) => !prev));
-
-  // Official Suno song link & embed id
-  const sunoSongId = 'a705bf09-8ba0-4b51-b72e-65e7f0128171';
-  const sunoSongUrl = 'https://suno.com/s/ovxX8fe1kx8bPxtZ';
-
   return (
     <section className="relative min-h-screen w-full flex items-center justify-center overflow-hidden px-4 py-8 sm:py-16 selection:bg-[#D4AF37]/30">
       {/* Background artwork with responsive switch */}
@@ -56,72 +47,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Exact target: Single Unified Suno Music Controller */}
-          <div className="relative">
-            <button
-              onClick={toggleMusic}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFDF9]/95 backdrop-blur-md border border-[#D4AF37]/60 shadow-md text-xs font-serif-luxury text-[#5B1020] hover:bg-white transition-all duration-300 focus:outline-none"
-              title="Official Wedding Soundtrack — Suno"
-              aria-label="Toggle Suno Wedding Soundtrack"
-            >
-              <Music className="w-3.5 h-3.5 text-[#C5A059] animate-pulse" />
-              <span className="font-medium tracking-wide">
-                {showMusic ? 'Wedding Music' : 'Play Music'}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider text-[#8C6D23] font-semibold border-l border-[#D4AF37]/40 pl-1.5">
-                Suno
-              </span>
-            </button>
-
-            {/* In-place Floating Suno Player Card */}
-            {showMusic && (
-              <div
-                role="region"
-                aria-label="Official Wedding Music Player"
-                className="absolute right-0 top-10 mt-2 w-[88vw] max-w-xs sm:max-w-sm bg-[#FFFDF9]/95 backdrop-blur-md rounded-2xl border-2 border-[#D4AF37] shadow-[0_20px_45px_rgba(67,13,20,0.35)] p-3 space-y-2 z-50 animate-in fade-in slide-in-from-top-2"
-              >
-                <div className="flex items-center justify-between pb-1.5 border-b border-[#D4AF37]/25">
-                  <div className="flex items-center gap-1.5 text-[11px] font-serif-luxury text-[#5B1020] font-semibold">
-                    <Sparkles className="w-3 h-3 text-[#C5A059]" />
-                    <span>Official Soundtrack</span>
-                  </div>
-                  <button
-                    onClick={toggleMusic}
-                    className="p-1 rounded-full text-[#8C6D23] hover:text-[#5B1020] hover:bg-[#FAF5EB] transition-colors"
-                    aria-label="Minimize player"
-                  >
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Official Suno Embed Player */}
-                <div className="rounded-xl overflow-hidden border border-[#D4AF37]/40 shadow-inner bg-[#FBF8F2]">
-                  <iframe
-                    title="Official Wedding Soundtrack"
-                    src={`https://suno.com/embed/${sunoSongId}`}
-                    width="100%"
-                    height="130"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen"
-                    loading="lazy"
-                    className="w-full border-0 block"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between pt-1 text-[10px] font-serif-luxury text-[#665230]">
-                  <span className="italic">Cinematic South Asian Ambience</span>
-                  <a
-                    href={sunoSongUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[#5B1020] font-semibold hover:underline"
-                  >
-                    <span>Suno Link</span>
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                </div>
-              </div>
+          <button
+            onClick={onToggleMusic}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFDF9]/95 backdrop-blur-md border border-[#D4AF37]/60 shadow-md text-xs font-serif-luxury text-[#5B1020] hover:bg-white transition-all duration-300 focus:outline-none"
+            title={isMusicPlaying ? 'Pause Wedding Music' : 'Play Wedding Music'}
+            aria-label={isMusicPlaying ? 'Pause Wedding Music' : 'Play Wedding Music'}
+            aria-pressed={isMusicPlaying}
+          >
+            {isMusicPlaying ? (
+              <Pause className="w-3.5 h-3.5 text-[#C5A059]" />
+            ) : (
+              <Play className="w-3.5 h-3.5 text-[#C5A059]" />
             )}
-          </div>
+            <span className="font-medium tracking-wide">Wedding Music</span>
+          </button>
 
           {/* Quick Digital Card Viewer */}
           <button
@@ -160,10 +99,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <p className="text-xs sm:text-sm tracking-wide italic text-[#701A24]">
               &ldquo;And of His signs is that He created for you from yourselves mates that you may find tranquility in them...&rdquo;
             </p>
-            <p className="text-sm sm:text-base leading-relaxed pt-2 font-medium">
+            <p className="text-lg leading-relaxed pt-2 font-bold">
               Mr &amp; Mrs Syed Sultan Mehmood
             </p>
-            <p className="text-xs sm:text-sm text-[#665230] uppercase tracking-[0.16em]">
+            <p className="text-[12px] text-[#665230] uppercase tracking-[0.16em]">
               cordially request the honour of your company to grace the Baraat ceremony of their beloved daughter
             </p>
           </div>
