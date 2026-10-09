@@ -8,6 +8,8 @@ interface HeroSectionProps {
   onScrollToRsvp: () => void;
   onOpenCardModal: () => void;
   isMusicPlaying: boolean;
+  isMusicLoading: boolean;
+  isMusicAutoplayBlocked: boolean;
   onToggleMusic: () => void;
 }
 
@@ -16,6 +18,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onScrollToRsvp,
   onOpenCardModal,
   isMusicPlaying,
+  isMusicLoading,
+  isMusicAutoplayBlocked,
   onToggleMusic,
 }) => {
   return (
@@ -48,18 +52,42 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
         <div className="flex items-center gap-2">
           <button
+            data-music-toggle
             onClick={onToggleMusic}
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFDF9]/95 backdrop-blur-md border border-[#D4AF37]/60 shadow-md text-xs font-serif-luxury text-[#5B1020] hover:bg-white transition-all duration-300 focus:outline-none"
-            title={isMusicPlaying ? 'Pause Wedding Music' : 'Play Wedding Music'}
-            aria-label={isMusicPlaying ? 'Pause Wedding Music' : 'Play Wedding Music'}
+            title={
+              isMusicLoading
+                ? 'Loading Wedding Music'
+                : isMusicPlaying
+                ? 'Pause Wedding Music'
+                : isMusicAutoplayBlocked
+                  ? 'Tap anywhere to start Wedding Music'
+                  : 'Play Wedding Music'
+            }
+            aria-label={
+              isMusicLoading
+                ? 'Loading Wedding Music'
+                : isMusicPlaying
+                ? 'Pause Wedding Music'
+                : isMusicAutoplayBlocked
+                  ? 'Tap anywhere to start Wedding Music'
+                  : 'Play Wedding Music'
+            }
             aria-pressed={isMusicPlaying}
+            aria-busy={isMusicLoading}
           >
             {isMusicPlaying ? (
               <Pause className="w-3.5 h-3.5 text-[#C5A059]" />
             ) : (
               <Play className="w-3.5 h-3.5 text-[#C5A059]" />
             )}
-            <span className="font-medium tracking-wide">Wedding Music</span>
+            <span className="font-medium tracking-wide">
+              {isMusicLoading
+                ? 'Loading...'
+                : isMusicAutoplayBlocked && !isMusicPlaying
+                  ? 'Tap anywhere for music'
+                  : 'Wedding Music'}
+            </span>
           </button>
 
           {/* Quick Digital Card Viewer */}

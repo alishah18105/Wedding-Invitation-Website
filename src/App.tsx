@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { GoldParticles } from './components/GoldParticles';
 import { HeroSection } from './components/HeroSection';
 import { CeremonySection } from './components/CeremonySection';
@@ -12,63 +12,96 @@ export default function App() {
   const [hasOpenedEnvelope, setHasOpenedEnvelope] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [isMusicLoading, setIsMusicLoading] = useState(false);
+  const [isMusicAutoplayBlocked, setIsMusicAutoplayBlocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const autoplayAttemptedRef = useRef(false);
+  const playAttemptInProgressRef = useRef(false);
+  const interactionCleanupRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+  const removeInteractionFallback = () => {
+    interactionCleanupRef.current?.();
+    interactionCleanupRef.current = null;
+  };
 
-    let interactionAttempted = false;
-    const removeInteractionListeners = () => {
-      window.removeEventListener('pointerdown', handleUserInteraction);
-      window.removeEventListener('keydown', handleUserInteraction);
-    };
-    const handleUserInteraction = () => {
-      if (interactionAttempted) return;
-      interactionAttempted = true;
-      removeInteractionListeners();
-      void playAudio();
-    };
-    const handlePlaying = () => removeInteractionListeners();
-    const playAudio = async () => {
-      try {
-        await audio.play();
-      } catch (error: unknown) {
-        if (error instanceof DOMException && error.name === 'NotAllowedError') return;
-        console.error('Unable to play wedding music.', error);
+  const installInteractionFallback = (audio: HTMLAudioElement) => {
+    if (interactionCleanupRef.current) return;
+
+    const handleInteraction = (event: Event) => {
+      if (!event.isTrusted || (event instanceof KeyboardEvent && event.repeat)) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-music-toggle]')
+      ) {
+        return;
       }
+      if (audio.paused) attemptPlayback(audio);
     };
 
-    audio.volume = 0.3;
-    window.addEventListener('pointerdown', handleUserInteraction);
-    window.addEventListener('keydown', handleUserInteraction);
-    audio.addEventListener('playing', handlePlaying);
-
-    if (!autoplayAttemptedRef.current) {
-      autoplayAttemptedRef.current = true;
-      void playAudio();
-    }
-
-    return () => {
-      removeInteractionListeners();
-      audio.removeEventListener('playing', handlePlaying);
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+    interactionCleanupRef.current = () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
     };
-  }, []);
+  };
 
-  const toggleMusic = () => {
+  function attemptPlayback(audio: HTMLAudioElement) {
+    if (!audio.paused || playAttemptInProgressRef.current) return;
+
+    playAttemptInProgressRef.current = true;
+    setIsMusicLoading(true);
+
+    void audio.play()
+      .then(() => {
+        setIsMusicAutoplayBlocked(false);
+        removeInteractionFallback();
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+          if (audio.paused) {
+            setIsMusicAutoplayBlocked(true);
+            setIsMusicLoading(false);
+            installInteractionFallback(audio);
+          }
+          return;
+        }
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+
+        console.error('Unable to play wedding music.', error);
+        setIsMusicLoading(false);
+      })
+      .finally(() => {
+        playAttemptInProgressRef.current = false;
+      });
+  }
+
+  const handleAudioReady = () => {
+    if (autoplayAttemptedRef.current) return;
+    autoplayAttemptedRef.current = true;
+
+    const audio = audioRef.current;
+    if (audio) attemptPlayback(audio);
+  };
+
+  const handleToggleMusic = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (audio.paused) {
-      void audio.play().catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'NotAllowedError') return;
-        console.error('Unable to play wedding music.', error);
-      });
+      attemptPlayback(audio);
     } else {
       audio.pause();
     }
   };
+
+  useLayoutEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.volume = 0.3;
+    return removeInteractionFallback;
+  }, []);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -92,9 +125,29 @@ export default function App() {
         ref={audioRef}
         src="/sound.mp3"
         preload="auto"
+        autoPlay
         loop
-        onPlay={() => setIsMusicPlaying(true)}
-        onPause={() => setIsMusicPlaying(false)}
+        onCanPlay={handleAudioReady}
+        onLoadStart={() => setIsMusicLoading(true)}
+        onWaiting={() => setIsMusicLoading(true)}
+        onPlaying={() => {
+          setIsMusicPlaying(true);
+          setIsMusicLoading(false);
+          setIsMusicAutoplayBlocked(false);
+          removeInteractionFallback();
+        }}
+        onPause={() => {
+          setIsMusicPlaying(false);
+          setIsMusicLoading(false);
+        }}
+        onEnded={() => {
+          setIsMusicPlaying(false);
+          setIsMusicLoading(false);
+        }}
+        onError={(event) => {
+          setIsMusicLoading(false);
+          console.error('Unable to load wedding music.', event.currentTarget.error);
+        }}
       />
 
       {/* 2. Floating Golden Light & Dust Particles Canvas */}
@@ -127,7 +180,9 @@ export default function App() {
         onScrollToRsvp={() => scrollToSection('venue-rsvp')}
         onOpenCardModal={() => setIsCardModalOpen(true)}
         isMusicPlaying={isMusicPlaying}
-        onToggleMusic={toggleMusic}
+        isMusicLoading={isMusicLoading}
+        isMusicAutoplayBlocked={isMusicAutoplayBlocked}
+        onToggleMusic={handleToggleMusic}
       />
 
       {/* SECTION 2 — Baraat Ceremony & Itinerary + Live Countdown */}

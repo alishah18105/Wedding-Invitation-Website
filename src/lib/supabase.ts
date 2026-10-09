@@ -35,8 +35,18 @@ interface Database {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
+const missingSupabaseVariables: string[] = [];
+if (!supabaseUrl) missingSupabaseVariables.push('VITE_SUPABASE_URL');
+if (!supabaseAnonKey) missingSupabaseVariables.push('VITE_SUPABASE_ANON_KEY');
+
+if (missingSupabaseVariables.length > 0 && import.meta.env.DEV) {
+  console.error(
+    `Supabase is unavailable because these Vite environment variables are missing: ${missingSupabaseVariables.join(', ')}. Set them before starting the development server.`
+  );
+}
+
 export const supabaseConfigurationError =
-  'The guestbook is not configured yet. Please try again later.';
+  'The guestbook is temporarily unavailable. Please try again later.';
 
 export const supabase =
   supabaseUrl && supabaseAnonKey
