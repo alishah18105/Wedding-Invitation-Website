@@ -30,11 +30,9 @@ Follow these steps to run the project locally.
 ### 1. Clone the Repository
 
 ```bash
-git clone <Wedding-Invitation-Website>
-cd <Wedding-Invitation-Website>
+git clone https://github.com/alishah18105/Wedding-Invitation-Website.git
+cd Wedding-Invitation-Website
 ```
-
-Replace the placeholders with your GitHub repository URL and project folder name.
 
 ### 2. Install Dependencies
 
